@@ -10,7 +10,7 @@ const app = express();
 
 // Set up the bot
 const bot = new TelegramBot(token);
-const webhookUrl = 'https://your-vercel-app-url/api/webhook';
+const webhookUrl = 'https://telegram-bot-lilac-two.vercel.app/api/webhook';
 
 // Telegram sets the webhook
 bot.setWebHook(webhookUrl);
