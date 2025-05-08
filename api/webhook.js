@@ -1,4 +1,3 @@
-import getNickname from '../../lib/nicknames.js';
 // Default export for Vercel's Serverless Function
 export default async function handler(req, res) {
   // Only accept POST requests (Telegram sends updates via POST)
@@ -14,6 +13,7 @@ export default async function handler(req, res) {
     const chatId = message.chat.id; // Chat ID to reply to
     const text = message.text.toLowerCase(); // Convert input to lowercase for easier comparison
 
+    // Try to use the user's first name, fall back to username, or use 'there'
     const name = message.from.first_name || message.from.username || 'there';
 
     // Convert current UTC time to IST (+5:30)
