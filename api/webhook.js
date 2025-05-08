@@ -1,5 +1,3 @@
-import getNickname from '../../../lib/nicknames.js';
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).send('Method Not Allowed');
@@ -10,11 +8,9 @@ export default async function handler(req, res) {
   if (message && message.text) {
     const chatId = message.chat.id;
     const text = message.text.toLowerCase();
-    const rawName =
-      message.from.username || message.from.first_name || 'there';
-    const name = getNickname(rawName); // Get nickname if available
+    const name = message.from.first_name || message.from.username || 'there';
 
-    // Convert UTC to IST
+    // Convert to IST
     const istTime = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
     const hour = istTime.getHours();
 
