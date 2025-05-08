@@ -1,4 +1,4 @@
-import getNickname from '../../lib/nicknames.js'; // adjust path if needed
+import getNickname from '../../../lib/nicknames.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
