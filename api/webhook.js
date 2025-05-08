@@ -1,6 +1,6 @@
 // Custom nickname mapping based on username or phone number
 const nicknameMap = {
-  'john_doe': 'Johnny Boy',
+  'niikamma': 'Johnny Boy',
   'alice123': 'Ally Cat',
   '9876543210': 'Bro',
   // Add more mappings as needed
