@@ -1,8 +1,28 @@
-// Utility function to get user's preferred name or fallback
-function getNickname(user) {
-  return user.first_name || user.username || 'there';
-}
+// Custom nickname mapping based on username or phone number
+const nicknameMap = {
+  'john_doe': 'Johnny Boy',
+  'alice123': 'Ally Cat',
+  '9876543210': 'Bro',
+  // Add more mappings as needed
+};
 
+// Utility function to get user's nickname or fallback
+function getNickname(message) {
+  const from = message.from || {};
+  const contact = message.contact || {};
+  const username = from.username?.toLowerCase();
+  const phone = contact.phone_number?.slice(-10); // Normalize to last 10 digits
+
+  if (username && nicknameMap[username]) {
+    return nicknameMap[username];
+  }
+
+  if (phone && nicknameMap[phone]) {
+    return nicknameMap[phone];
+  }
+
+  return from.first_name || username || phone || 'there';
+}
 // Default export for Vercel's Serverless Function
 export default async function handler(req, res) {
   // Accept only POST requests
@@ -19,7 +39,7 @@ export default async function handler(req, res) {
 
   const chatId = message.chat.id;
   const text = message.text.toLowerCase();
-  const name = getNickname(message.from);
+  const name = getNickname(message);
 
   // Convert current UTC time to IST (+5:30)
   const istTime = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
