@@ -9,15 +9,15 @@ export default async function handler(req, res) {
       const chatId = message.chat.id;
       const text = message.text.toLowerCase();
   
-      // Only trigger response if message is "hi"
       if (text === 'hi') {
         // Get user's name
         const name = message.from.first_name || message.from.username || 'there';
   
-        // Get time-based greeting
-        const hour = new Date().getHours();
-        let timeGreeting = '';
+        // Convert time to IST (UTC +5:30)
+        const istTime = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+        const hour = istTime.getHours();
   
+        let timeGreeting = '';
         if (hour >= 5 && hour < 12) {
           timeGreeting = 'Good Morning';
         } else if (hour >= 12 && hour < 17) {
@@ -55,7 +55,6 @@ export default async function handler(req, res) {
           res.status(500).json({ error: 'Error communicating with Telegram API' });
         }
       } else {
-        // Optional: handle other messages or ignore
         res.status(200).send('Message ignored');
       }
     } else {
