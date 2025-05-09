@@ -85,7 +85,36 @@ export default async function handler(req, res) {
       res.status(500).json({ error: 'Error communicating with Telegram API' });
     }
   } else {
-    // Gracefully handle non-text messages to prevent bot lockout
-    return res.status(200).send('Non-text message ignored');
+    // Gracefully handle non-text messages with a reply
+    const chatId = message?.chat?.id;
+    const name = getNickname(message?.from || {});
+    const fallbackReply = `${name}, I can only read *text messages* for now 😊`;
+  
+    if (chatId) {
+      try {
+        const response = await fetch(TELEGRAM_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: fallbackReply,
+            parse_mode: 'Markdown',
+          }),
+        });
+  
+        const data = await response.json();
+  
+        if (!data.ok) {
+          console.error('Error sending fallback message:', data);
+          return res.status(500).json({ error: 'Failed to send fallback message' });
+        }
+  
+        console.log('Fallback message sent successfully:', data);
+      } catch (error) {
+        console.error('Error with Telegram API for fallback:', error);
+      }
+    }
+  
+    return res.status(200).send('Non-text message handled gracefully');
   }
 }
