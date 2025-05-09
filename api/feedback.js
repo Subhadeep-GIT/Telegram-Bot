@@ -1,7 +1,7 @@
-import fs from 'fs';
-import path from 'path';
+import { MongoClient } from 'mongodb';
 
-const feedbackPath = path.resolve('./feedback.json');
+const uri = 'mongodb+srv://subhadeep051:eOXPwlfv8cTy0L1B@telegramfeedbackcluster.xyz.mongodb.net/?retryWrites=true&w=majority&appName=TelegramFeedbackCluster';
+const client = new MongoClient(uri);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -21,17 +21,17 @@ export default async function handler(req, res) {
   };
 
   try {
-    const existingData = fs.existsSync(feedbackPath)
-      ? JSON.parse(fs.readFileSync(feedbackPath, 'utf8'))
-      : [];
+    await client.connect();
+    const db = client.db('telegram_feedback');
+    const collection = db.collection('feedbacks');
 
-    existingData.push(entry);
-
-    fs.writeFileSync(feedbackPath, JSON.stringify(existingData, null, 2), 'utf8');
+    await collection.insertOne(entry);
 
     return res.status(200).json({ message: 'Feedback saved successfully' });
   } catch (error) {
     console.error('Failed to save feedback:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
+  } finally {
+    await client.close();
   }
 }
