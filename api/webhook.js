@@ -85,7 +85,7 @@ export default async function handler(req, res) {
       res.status(500).json({ error: 'Error communicating with Telegram API' });
     }
   } else {
-    // Message payload missing or invalid
-    res.status(400).json({ error: 'Invalid message format' });
+    // Gracefully handle non-text messages to prevent bot lockout
+    return res.status(200).send('Non-text message ignored');
   }
 }
