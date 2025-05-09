@@ -18,7 +18,7 @@ const userNicknames = {
   'akanksha21': 'Sonal JIJI',
   '+917079279772': 'Billi Mossy🐱',
   '+919693627390': 'CA ST 🧑‍💼💼',
-  '+918141829858': 'Chokhli 🧑‍💼💼',
+  'Demonstrator': 'Chokhli 🧑‍💼💼',
 };
 
 // Track users who were prompted for feedback
