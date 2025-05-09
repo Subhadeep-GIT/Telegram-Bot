@@ -1,33 +1,49 @@
-// Mapping of Telegram usernames to custom nicknames
+// webhook.js
+import mysql from 'mysql2/promise';
+const fs = require('fs');
+
+const dbConfig = {
+  host: 'muyr7.h.filess.io',
+  user: 'nikamma_hanglabor',
+  password: 'e473e344949c4ffa44aba9228e7353aba4d22870',
+  database: 'nikamma_hanglabor',
+  port: 61002,
+};
+
+// Nickname mappings
 const userNicknames = {
   'niikamma': 'Developer',
   'shilpi_here': 'Cheduu ❤️',
   'smrity_suhani': 'Simroti',
   'akanksha21': 'Sonal JIJI',
-  '+917079279772': 'Billi Mossy🐱',  
-  '+919693627390': 'CA ST 🧑‍💼💼', 
+  '+917079279772': 'Billi Mossy🐱',
+  '+919693627390': 'CA ST 🧑‍💼💼',
   '+918141829858': 'Chokhli 🧑‍💼💼',
-  // You can add more user mappings here like:
-  // 'username': 'nickname'
 };
 
-// Utility function to get user's preferred nickname based on username
+// Get nickname
 function getNickname(user) {
-  const username = user?.username;  // Get the username from the user object
-  // If the username exists in the dictionary, return the mapped nickname
-  // If not, fall back to using the user's first name or 'there'
+  const username = user?.username;
   return userNicknames[username] || user?.first_name || 'there';
 }
 
-// Utility function to save feedback to feedback.json
-const fs = require('fs');
-const path = './feedback.json';
+// Get MySQL connection
+async function getConnection() {
+  try {
+    return await mysql.createConnection(dbConfig);
+  } catch (err) {
+    console.error('Database connection failed:', err);
+    throw new Error('Database connection error');
+  }
+}
 
+// Save to feedback.json (optional backup)
 function saveFeedback(username, feedback) {
+  const path = './feedback.json';
   const feedbackData = {
     username,
     feedback,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 
   fs.readFile(path, 'utf8', (err, data) => {
@@ -35,148 +51,111 @@ function saveFeedback(username, feedback) {
       console.error('Error reading feedback file:', err);
       return;
     }
-
     const feedbacks = data ? JSON.parse(data) : [];
     feedbacks.push(feedbackData);
-
     fs.writeFile(path, JSON.stringify(feedbacks, null, 2), (err) => {
-      if (err) {
-        console.error('Error saving feedback:', err);
-      }
+      if (err) console.error('Error saving feedback:', err);
     });
   });
 }
 
-// Default export for Vercel's Serverless Function
+// API route handler
 export default async function handler(req, res) {
-  // Only accept POST requests (Telegram sends updates via POST)
   if (req.method !== 'POST') {
     return res.status(405).send('Method Not Allowed');
   }
 
-  // Telegram API endpoint for sending messages (now globally defined)
   const TELEGRAM_API = `https://api.telegram.org/bot${process.env.BOT_TOKEN}/sendMessage`;
-
-  // Extract the incoming message payload from the Telegram webhook
   const message = req.body.message;
 
-  // Proceed only if message and message text exist
   if (message && message.text) {
-    const chatId = message.chat.id;  // Extract chat ID to reply to the user
-    const text = message.text.toLowerCase();  // Convert text to lowercase for easier matching
-    const name = getNickname(message.from);  // Get the preferred nickname or fallback name
-
-    // Convert current UTC time to IST (+5:30)
+    const chatId = message.chat.id;
+    const text = message.text.toLowerCase();
+    const name = getNickname(message.from);
     const istTime = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
-    const hour = istTime.getHours();  // Get the current hour in IST
-
+    const hour = istTime.getHours();
     let reply = '';
 
-    // --- Greeting messages (Hi, Hello, Hey)
     if (text.includes('hi') || text.includes('hello') || text.includes('hey')) {
-      let timeGreeting = '';
-
-      // Determine the time-based greeting
-      if (hour >= 5 && hour < 12) {
-        timeGreeting = 'Good Morning';
-      } else if (hour >= 12 && hour < 17) {
-        timeGreeting = 'Good Afternoon';
-      } else {
-        timeGreeting = 'Good Evening';
-      }
-
-      // Build the response message with the user's nickname and time greeting
+      let timeGreeting = hour >= 5 && hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
       reply = `${name}! Hiii 😊\n${timeGreeting}!`;
 
-      // Follow-up message asking for feedback
       setTimeout(async () => {
         const feedbackMessage = 'Please help me grow by providing your valuable feedback! Your feedback means a lot to me!';
         await fetch(TELEGRAM_API, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: chatId, text: feedbackMessage })
+          body: JSON.stringify({ chat_id: chatId, text: feedbackMessage }),
         });
-      }, 2000);  // Wait for 2 seconds before sending feedback request
-
-    }
-    // --- Goodbye messages (Bye, Goodbye)
-    else if (text.includes('bye') || text.includes('goodbye')) {
-      if (hour >= 21 || hour < 5) {
-        // Late night goodbye
-        reply = `Bye dear ${name}! Sleep tight 😴🌙`;
-      } else {
-        // Regular daytime goodbye
-        reply = `Bye ${name}! See you soon 👋`;
-      }
-    }
-    // --- Feedback message (for feedback submission)
-    else if (text.includes('feedback')) {
-      const feedbackPrompt = 'Please share your valuable feedback in one line:';
+      }, 2000);
+    } else if (text.includes('bye') || text.includes('goodbye')) {
+      reply = hour >= 21 || hour < 5
+        ? `Bye dear ${name}! Sleep tight 😴🌙`
+        : `Bye ${name}! See you soon 👋`;
+    } else if (text.includes('feedback')) {
+      const prompt = 'Please share your valuable feedback in one line:';
       await fetch(TELEGRAM_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text: feedbackPrompt })
+        body: JSON.stringify({ chat_id: chatId, text: prompt }),
       });
       return res.status(200).send('Feedback prompt sent');
-    }
-    // Ignore all other messages
-    else {
-      return res.status(200).send('Message ignored');
+    } else {
+      try {
+        const connection = await getConnection();
+        await connection.execute(
+          'INSERT INTO feedback (username, feedback, timestamp) VALUES (?, ?, NOW())',
+          [name, text]
+        );
+        connection.end();
+        saveFeedback(name, text); // Optional backup
+
+        await fetch(TELEGRAM_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text: `Thanks ${name}! Feedback saved 😊` }),
+        });
+        return res.status(200).send('Feedback saved');
+      } catch (err) {
+        console.error('Error saving feedback:', err);
+        return res.status(500).send('Failed to save feedback');
+      }
     }
 
     try {
-      // Send the constructed reply to the user via Telegram API
       const response = await fetch(TELEGRAM_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text: reply })
+        body: JSON.stringify({ chat_id: chatId, text: reply }),
       });
-
       const data = await response.json();
 
       if (!data.ok) {
-        console.error('Error sending message:', data);
-        return res.status(500).json({ error: 'Failed to send message' });
+        console.error('Telegram send error:', data);
+        return res.status(500).send('Telegram API error');
       }
 
-      console.log('Message sent successfully:', data);
-      res.status(200).send('ok');
-    } catch (error) {
-      console.error('Error with Telegram API request:', error);
-      res.status(500).json({ error: 'Error communicating with Telegram API' });
+      return res.status(200).send('ok');
+    } catch (err) {
+      console.error('Error sending Telegram reply:', err);
+      return res.status(500).send('Telegram send failure');
     }
   } else {
-    // Gracefully handle non-text messages with a fallback reply
     const chatId = message?.chat?.id;
-    const name = getNickname(message?.from || {});  // Get the user's nickname or fallback name
+    const name = getNickname(message?.from || {});
     const fallbackReply = `${name}, I can only read *text messages* for now 😊`;
 
     if (chatId) {
       try {
-        // Send fallback message for non-text messages
-        const response = await fetch(TELEGRAM_API, {
+        await fetch(TELEGRAM_API, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: fallbackReply,
-            parse_mode: 'Markdown',
-          }),
+          body: JSON.stringify({ chat_id: chatId, text: fallbackReply, parse_mode: 'Markdown' }),
         });
-
-        const data = await response.json();
-
-        if (!data.ok) {
-          console.error('Error sending fallback message:', data);
-          return res.status(500).json({ error: 'Failed to send fallback message' });
-        }
-
-        console.log('Fallback message sent successfully:', data);
-      } catch (error) {
-        console.error('Error with Telegram API for fallback:', error);
+      } catch (err) {
+        console.error('Fallback send error:', err);
       }
     }
-
-    return res.status(200).send('Non-text message handled gracefully');
+    return res.status(200).send('Non-text message handled');
   }
 }
