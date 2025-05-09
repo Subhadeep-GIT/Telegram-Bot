@@ -111,7 +111,7 @@ export default async function handler(req, res) {
     }
     // --- Feedback message (for feedback submission)
     else if (text.includes('feedback')) {
-      const feedbackPrompt = 'Please share your valuable feedback:';
+      const feedbackPrompt = 'Please share your valuable feedback in one line:';
       await fetch(TELEGRAM_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
