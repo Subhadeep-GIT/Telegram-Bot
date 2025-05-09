@@ -19,6 +19,34 @@ function getNickname(user) {
   return userNicknames[username] || user?.first_name || 'there';
 }
 
+// Utility function to save feedback to feedback.json
+const fs = require('fs');
+const path = './feedback.json';
+
+function saveFeedback(username, feedback) {
+  const feedbackData = {
+    username,
+    feedback,
+    timestamp: new Date().toISOString()
+  };
+
+  fs.readFile(path, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading feedback file:', err);
+      return;
+    }
+
+    const feedbacks = data ? JSON.parse(data) : [];
+    feedbacks.push(feedbackData);
+
+    fs.writeFile(path, JSON.stringify(feedbacks, null, 2), (err) => {
+      if (err) {
+        console.error('Error saving feedback:', err);
+      }
+    });
+  });
+}
+
 // Default export for Vercel's Serverless Function
 export default async function handler(req, res) {
   // Only accept POST requests (Telegram sends updates via POST)
@@ -59,6 +87,17 @@ export default async function handler(req, res) {
 
       // Build the response message with the user's nickname and time greeting
       reply = `${name}! Hiii 😊\n${timeGreeting}!`;
+
+      // Follow-up message asking for feedback
+      setTimeout(async () => {
+        const feedbackMessage = 'Please help me grow by providing your valuable feedback! Your feedback means a lot to me!';
+        await fetch(TELEGRAM_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text: feedbackMessage })
+        });
+      }, 2000);  // Wait for 2 seconds before sending feedback request
+
     }
     // --- Goodbye messages (Bye, Goodbye)
     else if (text.includes('bye') || text.includes('goodbye')) {
@@ -69,6 +108,16 @@ export default async function handler(req, res) {
         // Regular daytime goodbye
         reply = `Bye ${name}! See you soon 👋`;
       }
+    }
+    // --- Feedback message (for feedback submission)
+    else if (text.includes('feedback')) {
+      const feedbackPrompt = 'Please share your valuable feedback:';
+      await fetch(TELEGRAM_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text: feedbackPrompt })
+      });
+      return res.status(200).send('Feedback prompt sent');
     }
     // Ignore all other messages
     else {
