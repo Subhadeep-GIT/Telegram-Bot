@@ -1,6 +1,12 @@
 // Mapping of Telegram usernames to custom nicknames
 const userNicknames = {
-  'niikamma': 'Ghosh Babu',  // Example: Add more mappings as needed
+  'niikamma': 'Developer',
+  'shilpi_here': 'Cheduu ❤️',
+  'smrity_suhani': 'Simroti',
+  'akanksha21': 'Sonal JIJI',
+  '+917079279772': 'Billi Mossy🐱',  
+  '+919693627390': 'CA ST 🧑‍💼💼', 
+  '+918141829858': 'Chokhli 🧑‍💼💼',
   // You can add more user mappings here like:
   // 'username': 'nickname'
 };
