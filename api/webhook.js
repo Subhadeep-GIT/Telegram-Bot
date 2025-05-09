@@ -76,51 +76,72 @@ export default async function handler(req, res) {
     const hour = istTime.getHours();
     let reply = '';
 
-    if (text.includes('hi') || text.includes('hello') || text.includes('hey')) {
-      let timeGreeting = hour >= 5 && hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
-      reply = `${name}! Hiii 😊\n${timeGreeting}!`;
+    // Define common greeting and goodbye patterns using regex
+const greetingRegex = /\b(hi+|hello+|hey+|hii+|hiiii+|heyy+)\b/i;
+const goodbyeRegex = /\b(bye+|goodbye+|see\s?ya+|seeya+)\b/i;
 
-      setTimeout(async () => {
-        const feedbackMessage = 'Please help me grow by providing your valuable feedback! Your feedback means a lot to me!';
-        await fetch(TELEGRAM_API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: chatId, text: feedbackMessage }),
-        });
-      }, 2000);
-    } else if (text.includes('bye') || text.includes('goodbye')) {
-      reply = hour >= 21 || hour < 5
-        ? `Bye dear ${name}! Sleep tight 😴🌙`
-        : `Bye ${name}! See you soon 👋`;
-    } else if (text.includes('feedback')) {
-      const prompt = 'Please share your valuable feedback in one line:';
-      await fetch(TELEGRAM_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text: prompt }),
-      });
-      return res.status(200).send('Feedback prompt sent');
-    } else {
-      try {
-        const connection = await getConnection();
-        await connection.execute(
-          'INSERT INTO feedback (username, feedback, timestamp) VALUES (?, ?, NOW())',
-          [name, text]
-        );
-        connection.end();
-        saveFeedback(name, text); // Optional backup
+if (greetingRegex.test(text)) {
+  // Determine time-based greeting
+  let timeGreeting = hour >= 5 && hour < 12
+    ? 'Good Morning'
+    : hour < 17
+    ? 'Good Afternoon'
+    : 'Good Evening';
 
-        await fetch(TELEGRAM_API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: chatId, text: `Thanks ${name}! Feedback saved 😊` }),
-        });
-        return res.status(200).send('Feedback saved');
-      } catch (err) {
-        console.error('Error saving feedback:', err);
-        return res.status(500).send('Failed to save feedback');
-      }
-    }
+  // Greeting reply message
+  reply = `${name}! Hiii 😊\n${timeGreeting}!`;
+
+  // Ask for feedback after a short delay
+  setTimeout(async () => {
+    const feedbackMessage = 'Please help me grow by providing your valuable feedback! Your feedback means a lot to me!';
+    await fetch(TELEGRAM_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: feedbackMessage }),
+    });
+  }, 2000);
+}
+else if (goodbyeRegex.test(text)) {
+  // Goodbye message based on time
+  reply = hour >= 21 || hour < 5
+    ? `Bye dear ${name}! Sleep tight 😴🌙`
+    : `Bye ${name}! See you soon 👋`;
+}
+else if (text.toLowerCase().includes('feedback')) {
+  // Prompt user for feedback
+  const prompt = 'Please share your valuable feedback in one line:';
+  await fetch(TELEGRAM_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text: prompt }),
+  });
+  return res.status(200).send('Feedback prompt sent');
+}
+else {
+  // Default case: Treat any other message as feedback
+  try {
+    const connection = await getConnection();
+    await connection.execute(
+      'INSERT INTO feedback (username, feedback, timestamp) VALUES (?, ?, NOW())',
+      [name, text]
+    );
+    connection.end();
+
+    // Optional: Save backup locally or to another storage
+    saveFeedback(name, text);
+
+    await fetch(TELEGRAM_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: `Thanks ${name}! Feedback saved 😊` }),
+    });
+
+    return res.status(200).send('Feedback saved');
+  } catch (err) {
+    console.error('Error saving feedback:', err);
+    return res.status(500).send('Failed to save feedback');
+  }
+}
 
     try {
       const response = await fetch(TELEGRAM_API, {
