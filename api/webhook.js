@@ -101,24 +101,30 @@ export default async function handler(req, res) {
       });
       return res.status(200).send('Feedback prompt sent');
     } else {
-      try {
-        const connection = await getConnection();
-        await connection.execute(
-          'INSERT INTO feedback (username, feedback, timestamp) VALUES (?, ?, NOW())',
-          [name, text]
-        );
-        connection.end();
-        saveFeedback(name, text); // Optional backup
-
-        await fetch(TELEGRAM_API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: chatId, text: `Thanks ${name}! Feedback saved 😊` }),
-        });
-        return res.status(200).send('Feedback saved');
-      } catch (err) {
-        console.error('Error saving feedback:', err);
-        return res.status(500).send('Failed to save feedback');
+      // Only save if user explicitly uses the word "feedback"
+      if (text.includes('feedback')) {
+        try {
+          const connection = await getConnection();
+          await connection.execute(
+            'INSERT INTO feedback (username, feedback, timestamp) VALUES (?, ?, NOW())',
+            [name, text]
+          );
+          connection.end();
+          saveFeedback(name, text); // Optional backup
+    
+          await fetch(TELEGRAM_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text: `Thanks ${name}! Feedback saved 😊` }),
+          });
+          return res.status(200).send('Feedback saved');
+        } catch (err) {
+          console.error('Error saving feedback:', err);
+          return res.status(500).send('Failed to save feedback');
+        }
+      } else {
+        // Ignore casual messages
+        return res.status(200).send('No feedback to save');
       }
     }
 
