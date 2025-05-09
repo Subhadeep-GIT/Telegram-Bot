@@ -21,6 +21,9 @@ const userNicknames = {
   '+918141829858': 'Chokhli 🧑‍💼💼',
 };
 
+// Track users who were prompted for feedback
+const feedbackSessions = new Map();
+
 // Get nickname
 function getNickname(user) {
   const username = user?.username;
@@ -92,7 +95,8 @@ export default async function handler(req, res) {
       reply = hour >= 21 || hour < 5
         ? `Bye dear ${name}! Sleep tight 😴🌙`
         : `Bye ${name}! See you soon 👋`;
-    } else if (text.includes('feedback')) {
+    }  else if (text === '/feedback') {
+      feedbackSessions.set(chatId, true); // Mark this chat as expecting feedback
       const prompt = 'Please share your valuable feedback in one line:';
       await fetch(TELEGRAM_API, {
         method: 'POST',
@@ -101,24 +105,40 @@ export default async function handler(req, res) {
       });
       return res.status(200).send('Feedback prompt sent');
     } else {
-      try {
-        const connection = await getConnection();
-        await connection.execute(
-          'INSERT INTO feedback (username, feedback, timestamp) VALUES (?, ?, NOW())',
-          [name, text]
-        );
-        connection.end();
-        saveFeedback(name, text); // Optional backup
-
+      // Check if the user was asked for feedback
+      if (feedbackSessions.has(chatId)) {
+        try {
+          const connection = await getConnection();
+          await connection.execute(
+            'INSERT INTO feedback (username, feedback, timestamp) VALUES (?, ?, NOW())',
+            [name, text]
+          );
+          connection.end();
+          saveFeedback(name, text); // Optional backup
+    
+          feedbackSessions.delete(chatId); // Clear session after saving
+    
+          await fetch(TELEGRAM_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text: `Thanks ${name}! Feedback saved 😊` }),
+          });
+          return res.status(200).send('Feedback saved');
+        } catch (err) {
+          console.error('Error saving feedback:', err);
+          return res.status(500).send('Failed to save feedback');
+        }
+      } else {
+        // Generic fallback if it's not a feedback session
         await fetch(TELEGRAM_API, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: chatId, text: `Thanks ${name}! Feedback saved 😊` }),
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: `Hi ${name}! If you have feedback, just type /feedback 😊`,
+          }),
         });
-        return res.status(200).send('Feedback saved');
-      } catch (err) {
-        console.error('Error saving feedback:', err);
-        return res.status(500).send('Failed to save feedback');
+        return res.status(200).send('Message acknowledged, not stored');
       }
     }
 
