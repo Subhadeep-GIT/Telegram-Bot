@@ -3,11 +3,11 @@ import mysql from 'mysql2/promise';
 const fs = require('fs');
 
 const dbConfig = {
-  host: 'muyr7.h.filess.io',
-  user: 'nikamma_hanglabor',
-  password: 'e473e344949c4ffa44aba9228e7353aba4d22870',
-  database: 'nikamma_hanglabor',
-  port: 61002,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: parseInt(process.env.DB_PORT, 10),
 };
 
 // Nickname mappings
