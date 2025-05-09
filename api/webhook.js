@@ -1,28 +1,26 @@
+const fs = require('fs');
+const fetch = require('node-fetch');
+
 // Mapping of Telegram usernames to custom nicknames
 const userNicknames = {
   'niikamma': 'Developer',
   'shilpi_here': 'Cheduu ❤️',
   'smrity_suhani': 'Simroti',
   'akanksha21': 'Sonal JIJI',
-  '+917079279772': 'Billi Mossy🐱',  
-  '+919693627390': 'CA ST 🧑‍💼💼', 
+  '+917079279772': 'Billi Mossy🐱',
+  '+919693627390': 'CA ST 🧑‍💼💼',
   '+918141829858': 'Chokhli 🧑‍💼💼',
-  // You can add more user mappings here like:
-  // 'username': 'nickname'
+  // Add more mappings if needed
 };
 
 // Utility function to get user's preferred nickname based on username
 function getNickname(user) {
-  const username = user?.username;  // Get the username from the user object
-  // If the username exists in the dictionary, return the mapped nickname
-  // If not, fall back to using the user's first name or 'there'
+  const username = user?.username;
   return userNicknames[username] || user?.first_name || 'there';
 }
 
 // Utility function to save feedback to feedback.json
-const fs = require('fs');
 const path = './feedback.json';
-
 function saveFeedback(username, feedback) {
   const feedbackData = {
     username,
@@ -49,34 +47,28 @@ function saveFeedback(username, feedback) {
 
 // Default export for Vercel's Serverless Function
 export default async function handler(req, res) {
-  // Only accept POST requests (Telegram sends updates via POST)
   if (req.method !== 'POST') {
     return res.status(405).send('Method Not Allowed');
   }
 
-  // Telegram API endpoint for sending messages (now globally defined)
   const TELEGRAM_API = `https://api.telegram.org/bot${process.env.BOT_TOKEN}/sendMessage`;
-
-  // Extract the incoming message payload from the Telegram webhook
   const message = req.body.message;
 
-  // Proceed only if message and message text exist
   if (message && message.text) {
-    const chatId = message.chat.id;  // Extract chat ID to reply to the user
-    const text = message.text.toLowerCase();  // Convert text to lowercase for easier matching
-    const name = getNickname(message.from);  // Get the preferred nickname or fallback name
+    const chatId = message.chat.id;
+    const text = message.text.toLowerCase();
+    const name = getNickname(message.from);
 
-    // Convert current UTC time to IST (+5:30)
+    // Convert UTC time to IST (+5:30)
     const istTime = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
-    const hour = istTime.getHours();  // Get the current hour in IST
+    const hour = istTime.getHours();
 
     let reply = '';
 
-    // --- Greeting messages (Hi, Hello, Hey)
+    // Greeting Messages (Hi, Hello, Hey)
     if (text.includes('hi') || text.includes('hello') || text.includes('hey')) {
       let timeGreeting = '';
 
-      // Determine the time-based greeting
       if (hour >= 5 && hour < 12) {
         timeGreeting = 'Good Morning';
       } else if (hour >= 12 && hour < 17) {
@@ -85,10 +77,8 @@ export default async function handler(req, res) {
         timeGreeting = 'Good Evening';
       }
 
-      // Build the response message with the user's nickname and time greeting
       reply = `${name}! Hiii 😊\n${timeGreeting}!`;
 
-      // Follow-up message asking for feedback
       setTimeout(async () => {
         const feedbackMessage = 'Please help me grow by providing your valuable feedback! Your feedback means a lot to me!';
         await fetch(TELEGRAM_API, {
@@ -96,20 +86,13 @@ export default async function handler(req, res) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chat_id: chatId, text: feedbackMessage })
         });
-      }, 2000);  // Wait for 2 seconds before sending feedback request
-
+      }, 2000);  // Wait 2 seconds before asking for feedback
     }
-    // --- Goodbye messages (Bye, Goodbye)
+    // Goodbye Messages (Bye, Goodbye)
     else if (text.includes('bye') || text.includes('goodbye')) {
-      if (hour >= 21 || hour < 5) {
-        // Late night goodbye
-        reply = `Bye dear ${name}! Sleep tight 😴🌙`;
-      } else {
-        // Regular daytime goodbye
-        reply = `Bye ${name}! See you soon 👋`;
-      }
+      reply = (hour >= 21 || hour < 5) ? `Bye dear ${name}! Sleep tight 😴🌙` : `Bye ${name}! See you soon 👋`;
     }
-    // --- Feedback message (for feedback submission)
+    // Feedback Submission Request
     else if (text.includes('feedback')) {
       const feedbackPrompt = 'Please share your valuable feedback in one line:';
       await fetch(TELEGRAM_API, {
@@ -125,7 +108,6 @@ export default async function handler(req, res) {
     }
 
     try {
-      // Send the constructed reply to the user via Telegram API
       const response = await fetch(TELEGRAM_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -133,7 +115,6 @@ export default async function handler(req, res) {
       });
 
       const data = await response.json();
-
       if (!data.ok) {
         console.error('Error sending message:', data);
         return res.status(500).json({ error: 'Failed to send message' });
@@ -146,14 +127,13 @@ export default async function handler(req, res) {
       res.status(500).json({ error: 'Error communicating with Telegram API' });
     }
   } else {
-    // Gracefully handle non-text messages with a fallback reply
+    // Handling non-text messages
     const chatId = message?.chat?.id;
-    const name = getNickname(message?.from || {});  // Get the user's nickname or fallback name
+    const name = getNickname(message?.from || {});
     const fallbackReply = `${name}, I can only read *text messages* for now 😊`;
 
     if (chatId) {
       try {
-        // Send fallback message for non-text messages
         const response = await fetch(TELEGRAM_API, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -165,7 +145,6 @@ export default async function handler(req, res) {
         });
 
         const data = await response.json();
-
         if (!data.ok) {
           console.error('Error sending fallback message:', data);
           return res.status(500).json({ error: 'Failed to send fallback message' });
